@@ -3,9 +3,11 @@
 namespace App\Entity;
 
 use App\Repository\JDSRepository;
+use App\Enum\DureeJDS;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: JDSRepository::class)]
 class JDS
@@ -13,40 +15,51 @@ class JDS
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['jds:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['jds:read'])]
     private ?string $nom = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['jds:read'])]
     private ?string $editeur = null;
 
     #[ORM\Column]
+    #[Groups(['jds:read'])]
     private ?int $ageMin = null;
 
     #[ORM\Column]
+    #[Groups(['jds:read'])]
     private ?int $nbJoueurMin = null;
 
     #[ORM\Column]
+    #[Groups(['jds:read'])]
     private ?int $nbJoueurMax = null;
 
     #[ORM\Column]
+    #[Groups(['jds:read'])]
     private ?bool $solo = null;
 
     #[ORM\Column]
-    private ?bool $coopératif = null;
+    #[Groups(['jds:read'])]
+    private ?bool $cooperatif = null;
 
     /**
      * @var Collection<int, Mecanique>
      */
     #[ORM\ManyToMany(targetEntity: Mecanique::class, inversedBy: 'jDS')]
+    #[Groups(['jds:read'])]
     private Collection $mecanique;
 
     #[ORM\ManyToOne(inversedBy: 'jDS')]
+    #[Groups(['jds:read'])]
     private ?Categorie $categorie = null;
 
-    #[ORM\Column(length: 255, nullable: true)]
-    private ?string $durée = null;
+    #[ORM\Column(enumType: DureeJDS::class, nullable: true)]
+    #[Groups(['jds:read'])]
+    private ?DureeJDS $duree = null;
 
     public function __construct()
     {
@@ -94,7 +107,7 @@ class JDS
         return $this->ageMin;
     }
 
-    public function setageMin(int $ageMin): static
+    public function setAgemin(int $ageMin): static
     {
         $this->ageMin = $ageMin;
 
@@ -137,14 +150,14 @@ class JDS
         return $this;
     }
 
-    public function isCoopératif(): ?bool
+    public function isCooperatif(): ?bool
     {
-        return $this->coopératif;
+        return $this->cooperatif;
     }
 
-    public function setCoopératif(bool $coopératif): static
+    public function setCooperatif(bool $cooperatif): static
     {
-        $this->coopératif = $coopératif;
+        $this->cooperatif = $cooperatif;
 
         return $this;
     }
@@ -185,14 +198,14 @@ class JDS
         return $this;
     }
 
-    public function getDurée(): ?string
+    public function getDuree(): ?DureeJDS
     {
-        return $this->durée;
+        return $this->duree;
     }
 
-    public function setDurée(?string $durée): static
+    public function setDuree(?DureeJDS $duree): static
     {
-        $this->durée = $durée;
+        $this->duree = $duree;
 
         return $this;
     }

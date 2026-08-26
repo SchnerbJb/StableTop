@@ -6,6 +6,8 @@ use App\Repository\MecaniqueRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
+
 
 #[ORM\Entity(repositoryClass: MecaniqueRepository::class)]
 class Mecanique
@@ -13,15 +15,17 @@ class Mecanique
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['jds:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['jds:read'])]
     private ?string $nom = null;
 
     /**
      * @var Collection<int, JDS>
      */
-    #[ORM\ManyToMany(targetEntity: JDS::class, mappedBy: 'Mecanique')]
+    #[ORM\ManyToMany(targetEntity: JDS::class, mappedBy: 'mecanique')]
     private Collection $jDS;
 
     public function __construct()

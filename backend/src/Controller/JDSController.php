@@ -5,9 +5,11 @@ namespace App\Controller;
 use App\Entity\JDS;
 use App\Entity\Categorie;
 use App\Entity\Mecanique;
+use App\Enum\DureeJDS;
 use Doctrine\ORM\EntityManagerInterface;
 use App\Repository\MecaniqueRepository;
 use App\Repository\CategorieRepository;
+use App\Repository\JDSRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -29,11 +31,11 @@ final class JDSController extends AbstractController
 
         $jds->setNom($data['nom']);
         $jds->setEditeur($data['editeur']);
-        $jds->setageMin($data['ageMin']);
+        $jds->setAgemin($data['ageMin']);
         $jds->setNbJoueurMin($data['nbJoueurMin']);
         $jds->setNbJoueurMax($data['nbJoueurMax']);
         $jds->setSolo($data['solo']);
-        $jds->setCoopératif($data['coop']);
+        $jds->setCooperatif($data['cooperatif']);
         foreach ($data['mecaniques'] as $mecaniqueId) {
             $mecanique = $mecaniqueRepository->find($mecaniqueId);
 
@@ -52,7 +54,13 @@ final class JDSController extends AbstractController
         ], 404);
         }
         $jds->setCategorie($categorie);
-        $jds->setDurée($data['durée']);
+        $duree = DureeJDS::tryFrom($data['duree']);
+        if ($duree === null) {
+            return $this->json([
+            'error' => 'Durée invalide'
+            ], 400);
+        }
+        $jds->setDuree($duree);
 
         $entityManager->persist($jds);
         $entityManager->flush();
@@ -65,87 +73,81 @@ final class JDSController extends AbstractController
         ]);
     
     }
-    #[Route('/api/jds/{id}', name: 'api_recup_jds', methods: ['GET'])]
-    public function show(int $id, EntityManagerInterface $entityManager): JsonResponse
+    #[Route('/api/jds/{id}', name: 'api_recup_jds', methods: ['GET'],
+    requirements: ['id' => '\d+'])]
+    public function show(int $id, JDSRepository $repository): JsonResponse
     {
-        $jds = $entityManager->getRepository(JDS::class)->find($id);
-
-        $mecaniques=[];
-            foreach($jds->getMecanique() as $mecanique){
-                $mecaniques[] = $mecanique->getNom();
-            }
-
+        $jds = $repository->find($id);
+        
         if (!$jds) {
             return $this->json([
                 'message' => 'Jeu non trouvé'
             ], 404);
         }
+            return $this->json($jds, context: ['groups' => ['jds:read']]);
 
-        return $this->json([
-            'id' => $jds->getId(),
-            'nom' => $jds->getNom(),
-            'editeur' => $jds->getEditeur(),
-            'ageMin' => $jds->getAgeMin(),
-            'nbJoueursMin' => $jds->getNbJoueurMin(),
-            'nbJoueursMax' => $jds->getNbJoueurMax(),
-            'solo' => $jds->isSolo(),
-            'coop' => $jds->isCoopératif(),
-            'mecanique' => $mecaniques,
-            'categorie' => $jds->getCategorie()->getNom(),
-            'durée' => $jds->getDurée(),
-        ]);
     }
     #[Route('api/jds', name: 'api_jds_recup_all', methods: ['GET'])]
-    public function show_all(EntityManagerInterface $entityManager): JsonResponse
+    public function show_all(JDSRepository $repository, Request $request): JsonResponse
     {
-    $jds = $entityManager
-           ->getRepository(JDS::class)
-           ->findAll();
+    $nom = $request->query->get('nom');
+    $editeur = $request->query->get('editeur');
+    $ageMin = $request->query->getInt('ageMin') ?: null;
+    $nbJoueurMax = $request->query->getInt('nbJoueurMax') ?: null;
+    $nbJoueurMin = $request->query->getInt('nbJoueurMin') ?: null;
+    $nbJoueur = $request->query->getInt('nbJoueur') ?: null;
+    $solo = $request->query->has('solo') ? $request->query->getBoolean('solo') : null;
+    $cooperatif = $request->query->has('cooperatif') ? $request->query->getBoolean('cooperatif') : null;
+    $categorie = $request->query->getInt('categorie') ?: null;
+    $mecanique = $request->query->all('mecanique');
+    $duree = $request->query->get('duree');
+    $duree = null;
+    if ($request->query->has('duree')) {
+        $duree = DureeJDS::tryFrom($request->query->get('duree'));
+        if ($duree === null){
+            return $this->json([
+            'error' => 'Durée invalide',
+            'valeursPossibles' => array_column(DureeJDS::cases(), 'value')
+            ], 400);
+        }
+    }
+    
 
-    $liste_jds=[];
-
-    foreach($jds as $jeu) {
-
-        $mecaniques=[];
-
-        foreach($jeu->getMecanique() as $mecanique){
-                $mecaniques[] = $mecanique->getNom();
-            }
-
-        $liste_jds[] =[
-            'id' => $jeu->getId(),
-            'nom' => $jeu->getNom(),
-            'editeur' => $jeu->getEditeur(),
-            'ageMin' => $jeu->getAgeMin(),
-            'nbJoueursMin' => $jeu->getNbJoueurMin(),
-            'nbJoueursMax' => $jeu->getNbJoueurMax(),
-            'solo' => $jeu->isSolo(),
-            'coop' => $jeu->isCoopératif(),
-            'mecanique' => $mecaniques,
-            'categorie' => $jeu->getCategorie()->getNom(),
-            'durée' => $jeu->getDurée(),
-        ];
+    $jds = $repository->findByFilters(
+            $nom,
+            $editeur,
+            $ageMin,
+            $nbJoueurMin,
+            $nbJoueurMax,
+            $nbJoueur,
+            $solo,
+            $cooperatif,
+            $categorie,
+            $mecanique,
+            $duree
+    );
+    return $this->json($jds, context: ['groups' => ['jds:read']]);
     }
 
-    return $this->json($liste_jds);
-    }
 
-    #[Route('/api/jds/{id}', name: 'api_modif_jds', methods: ['PATCH'])]
+    #[Route('/api/jds/{id}', name: 'api_modif_jds', methods: ['PATCH'],
+    requirements: ['id' => '\d+'])]
     public function modify(
     int $id,
     EntityManagerInterface $entityManager,
     Request $request,
+    JDSRepository $jdsRepository,
     MecaniqueRepository $mecaniqueRepository,
     CategorieRepository $categorieRepository
     ): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
 
-        $jds = $entityManager->getRepository(JDS::class)->find($id);
+        $jds = $jdsRepository->find($id);
 
         if (!$jds) {
             return $this->json([
-                'message' => 'jeu non trouvé',
+                'message' => 'Jeu non trouvé',
             ], 404);
         }
             if (isset($data['nom'])){
@@ -166,16 +168,22 @@ final class JDSController extends AbstractController
             if (isset($data['solo'])){
                 $jds->setSolo($data['solo']);
             }
-            if (isset($data['coop'])){
-                $jds->setCoopératif($data['coop']);
+            if (isset($data['cooperatif'])){
+                $jds->setCooperatif($data['cooperatif']);
             }
-            if (isset($data['durée'])){
-                $jds->setDurée($data['durée']);
+            if (isset($data['duree'])){
+                $duree = DureeJDS::tryForm($data['duree']);
+                if ($duree === null) {
+                    return $this->json([
+                    'message' => 'Durée invalide'
+                    ], 400);
+                }
+                $jds->setDuree($duree);
             }
+
             if (array_key_exists('categorie', $data)) {
 
-                $categorie = $entityManager
-                ->getRepository(Categorie::class)
+                $categorie = $categorieRepository
                 ->find($data['categorie']);
 
                 if(!$categorie){
@@ -204,6 +212,28 @@ final class JDSController extends AbstractController
             $entityManager->flush();
         return $this->json([
             'message' => 'Jeu modifié avec succès'
+        ]);
+    }
+    #[Route('/api/jds/{id}', name: 'api_suppression_jds', methods: ['DELETE'],
+    requirements: ['id' => '\d+'])]
+    public function delete(
+        int $id,
+        EntityManagerInterface $entityManager,
+        JDSRepository $repository
+    ): JsonResponse{
+        $jds = $repository->find($id);
+
+        if(!$jds){
+            return $this->json([
+                'message' => 'Jeu non trouvé'
+            ], 404);
+        }
+
+        $entityManager->remove($jds);
+        $entityManager->flush();
+
+        return $this->json([
+            'message' => 'suppression réalisée avec succés',
         ]);
     }
 
