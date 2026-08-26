@@ -61,6 +61,10 @@ class JDS
     #[Groups(['jds:read'])]
     private ?DureeJDS $duree = null;
 
+    #[ORM\Column(length: 500, nullable: true)]
+    #[Groups(['jds:read'])]
+    private ?string $image = null;
+
     public function __construct()
     {
         $this->mecanique = new ArrayCollection();
@@ -209,4 +213,15 @@ class JDS
 
         return $this;
     }
+    public function getImage(): ?string
+    {
+        return $this->image;
+    }
+
+    public function setImage(string $image): static
+    {
+        $this->image = $image;
+
+        return $this;
+    }    
 }

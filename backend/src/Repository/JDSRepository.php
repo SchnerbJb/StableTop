@@ -29,7 +29,7 @@ class JDSRepository extends ServiceEntityRepository
         ?bool $cooperatif = null,
         ?int $categorie = null,
         ?array $mecaniques = [],
-        ?DureeJDS $duree = null
+        ?DureeJDS $duree = null,
     ): array {
         $qb = $this->createQueryBuilder('jeu');
 

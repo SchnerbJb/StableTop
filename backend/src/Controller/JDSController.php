@@ -61,7 +61,9 @@ final class JDSController extends AbstractController
             ], 400);
         }
         $jds->setDuree($duree);
-
+        if (isset($data['image'])) {
+            $jds->setImage($data['image']);
+        }
         $entityManager->persist($jds);
         $entityManager->flush();
 
@@ -100,7 +102,6 @@ final class JDSController extends AbstractController
     $cooperatif = $request->query->has('cooperatif') ? $request->query->getBoolean('cooperatif') : null;
     $categorie = $request->query->getInt('categorie') ?: null;
     $mecanique = $request->query->all('mecanique');
-    $duree = $request->query->get('duree');
     $duree = null;
     if ($request->query->has('duree')) {
         $duree = DureeJDS::tryFrom($request->query->get('duree'));
@@ -111,6 +112,7 @@ final class JDSController extends AbstractController
             ], 400);
         }
     }
+
     
 
     $jds = $repository->findByFilters(
@@ -124,7 +126,7 @@ final class JDSController extends AbstractController
             $cooperatif,
             $categorie,
             $mecanique,
-            $duree
+            $duree,
     );
     return $this->json($jds, context: ['groups' => ['jds:read']]);
     }
@@ -172,7 +174,7 @@ final class JDSController extends AbstractController
                 $jds->setCooperatif($data['cooperatif']);
             }
             if (isset($data['duree'])){
-                $duree = DureeJDS::tryForm($data['duree']);
+                $duree = DureeJDS::tryFrom($data['duree']);
                 if ($duree === null) {
                     return $this->json([
                     'message' => 'Durée invalide'
@@ -207,9 +209,13 @@ final class JDSController extends AbstractController
                     ], 404);
                 }
                 $jds->addMecanique($mecanique);
-            }
+            }  
         }
-            $entityManager->flush();
+        if (isset($data['image'])){
+            $jds->setImage($data['image']);
+        }                  
+        
+        $entityManager->flush();
         return $this->json([
             'message' => 'Jeu modifié avec succès'
         ]);
